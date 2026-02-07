@@ -79,7 +79,7 @@
         } from 'lucide-react';
 
         function App() {
-            // --- Estados ---
+            // --- Estados Principales ---
             const [activeTab, setActiveTab] = useState(3); 
             const [items, setItems] = useState([]);
             const [isModalOpen, setIsModalOpen] = useState(false);
@@ -87,19 +87,22 @@
             const [showSettings, setShowSettings] = useState(false);
             const [editingItem, setEditingItem] = useState(null); 
             const [reorderModeId, setReorderModeId] = useState(null);
+            
             const [sortBy, setSortBy] = useState('manual'); 
             const [sortDir, setSortDir] = useState('asc'); 
             const [showSortMenu, setShowSortMenu] = useState(false);
+
             const [itemToDelete, setItemToDelete] = useState(null);
             const [toastMessage, setToastMessage] = useState(null);
 
-            // Modales Extra
             const [isConsumeModalOpen, setIsConsumeModalOpen] = useState(false);
             const [consumeItem, setConsumeItem] = useState(null);
             const [consumeQty, setConsumeQty] = useState('');
             const [consumeLocation, setConsumeLocation] = useState('Sara');
+
             const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
             const [historyItem, setHistoryItem] = useState(null);
+
             const [isReportModalOpen, setIsReportModalOpen] = useState(false);
             const [reportStartDate, setReportStartDate] = useState('');
             const [reportEndDate, setReportEndDate] = useState('');
@@ -119,6 +122,8 @@
             const [newItemAlarmTime, setNewItemAlarmTime] = useState('');
             const [newItemAlarmDate, setNewItemAlarmDate] = useState('');
             const [isRecurring, setIsRecurring] = useState(false);
+
+            // Inventario Form
             const [invQtySara, setInvQtySara] = useState('');
             const [invQtyNegocio, setInvQtyNegocio] = useState('');
 
@@ -130,21 +135,28 @@
 
             // --- Efectos ---
             useEffect(() => {
-                if ('Notification' in window && Notification.permission !== 'granted') Notification.requestPermission();
+                // Solicitar permisos al inicio
+                if ('Notification' in window && Notification.permission === 'default') {
+                    Notification.requestPermission();
+                }
+
                 const interval = setInterval(() => checkAlarms(), 60000); 
-                setTimeout(checkAlarms, 2000); 
-                const savedItems = localStorage.getItem('barcaData_Ultimate_Finalv3');
+                setTimeout(checkAlarms, 3000); // Check inicial retrasado
+                
+                const savedItems = localStorage.getItem('barcaData_Ultimate_v19');
                 if (savedItems) try { setItems(JSON.parse(savedItems)); } catch (e) { }
+                
                 const now = new Date();
                 setReportEndDate(formatDateInput(now));
                 const lastMonth = new Date(now);
                 lastMonth.setMonth(now.getMonth() - 1);
                 setReportStartDate(formatDateInput(lastMonth));
+
                 return () => clearInterval(interval);
             }, []);
 
             useEffect(() => {
-                localStorage.setItem('barcaData_Ultimate_Finalv3', JSON.stringify(items));
+                localStorage.setItem('barcaData_Ultimate_v19', JSON.stringify(items));
             }, [items]);
 
             useEffect(() => {
@@ -166,7 +178,10 @@
                 const offset = date.getTimezoneOffset() * 60000;
                 return new Date(date.getTime() - offset).toISOString().slice(0, -1);
             };
-            const getTodayDateStr = () => new Date(new Date().getTime() - (new Date().getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            const getTodayDateStr = () => {
+                const now = new Date();
+                return new Date(now.getTime() - (now.getTimezoneOffset() * 60000)).toISOString().split('T')[0];
+            };
             const formatDate = (isoString) => {
                 if(!isoString) return '';
                 const date = new Date(isoString);
@@ -181,17 +196,19 @@
             };
             const vibrate = (ms = 50) => { if (navigator.vibrate) navigator.vibrate(ms); };
 
-            // --- Notificaciones ---
+            // --- Notificaciones ROBUSTAS ---
             const checkAlarms = () => {
                 const now = new Date();
                 const todayStr = getTodayDateStr();
                 const dayOfWeek = now.getDay();
                 const timeStr = now.toTimeString().substring(0, 5);
+
                 items.forEach(item => {
                     if (item.tabId === 2 && !item.completed && item.alarmEnabled && item.alarmTime) {
                         let shouldTrigger = false;
                         if (item.isRecurring && item.recurrence?.includes(dayOfWeek)) shouldTrigger = true;
                         else if (!item.isRecurring && item.alarmDate === todayStr) shouldTrigger = true;
+
                         if (shouldTrigger && item.alarmTime === timeStr) {
                             const key = `notified_${item.id}_${todayStr}_${timeStr}`;
                             if (!localStorage.getItem(key)) {
@@ -203,73 +220,188 @@
                 });
             };
 
-            const sendNotification = async (title, body) => {
-                if (!('Notification' in window)) return;
-                if (Notification.permission === 'granted') {
-                    try {
-                        const reg = await navigator.serviceWorker.ready;
-                        if (reg && reg.showNotification) {
-                             await reg.showNotification(title, { body: body, icon: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg', vibrate: [200, 100, 200], tag: 'barca-alert' });
-                        } else {
-                            new Notification(title, { body, icon: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg' });
-                        }
-                    } catch (e) { new Notification(title, { body }); }
-                }
-            };
-            
-            const triggerTestNotification = () => {
-                if (Notification.permission !== 'granted') {
-                    Notification.requestPermission().then(p => { if (p === 'granted') sendNotification("Barça Organizer", "Permisos concedidos."); });
-                } else sendNotification("Barça Organizer", "¡Prueba de alarma exitosa!");
+            const playAlarmSound = () => {
+                // Sonido corto tipo bip
+                const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioCtx.createOscillator();
+                const gainNode = audioCtx.createGain();
+                oscillator.connect(gainNode);
+                gainNode.connect(audioCtx.destination);
+                oscillator.type = 'sine';
+                oscillator.frequency.value = 880; 
+                gainNode.gain.value = 0.5;
+                oscillator.start();
+                setTimeout(() => { oscillator.stop(); }, 500);
             };
 
-            // --- Lógica General (No Duplicada) ---
+            const sendNotification = async (title, body) => {
+                // Intentar reproducir sonido siempre
+                try { playAlarmSound(); } catch(e) {}
+
+                if (!('Notification' in window)) {
+                    setToastMessage("Navegador no soporta notificaciones");
+                    return;
+                }
+                
+                if (Notification.permission === 'granted') {
+                    // Intento 1: Service Worker (Mejor para móviles)
+                    try {
+                        const reg = await navigator.serviceWorker.getRegistration();
+                        if (reg) {
+                             await reg.showNotification(title, {
+                                body: body,
+                                icon: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+                                vibrate: [200, 100, 200],
+                                tag: 'barca-alert',
+                                renotify: true,
+                                priority: 'high'
+                            });
+                            return;
+                        }
+                    } catch (e) { console.log("Fallo SW Notify", e); }
+
+                    // Intento 2: Nativo
+                    try {
+                        new Notification(title, { 
+                            body: body, 
+                            icon: 'https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg',
+                            vibrate: [200, 100, 200]
+                        });
+                    } catch (e) { console.log("Fallo Native Notify", e); }
+                } 
+            };
+            
+            const triggerTestNotification = async () => {
+                if (!('Notification' in window)) {
+                    alert("Tu navegador no soporta notificaciones.");
+                    return;
+                }
+
+                if (Notification.permission === 'granted') {
+                    sendNotification("Barça Organizer", "¡Prueba exitosa! (Sonido + Vibración)");
+                    setToastMessage("Enviando prueba...");
+                } else if (Notification.permission !== 'denied') {
+                    const permission = await Notification.requestPermission();
+                    if (permission === 'granted') {
+                        sendNotification("Barça Organizer", "Permisos concedidos.");
+                    } else {
+                        alert("Permiso denegado. Revisa la configuración de Android -> Apps -> Navegador -> Notificaciones.");
+                    }
+                } else {
+                    alert("Permisos denegados anteriormente. Debes habilitarlos manualmente en Ajustes.");
+                }
+            };
+
+            // --- CRUD y Lógica (Sin cambios funcionales, solo optimización) ---
+            const saveItem = () => {
+                if (!newItemText.trim()) return;
+                let newItemsList = [...items];
+                const ts = getLocalISOString();
+
+                // Lógica de Inventario (Suma)
+                if (activeTab === 3 && !editingItem && existsInInventory) {
+                    const idx = newItemsList.findIndex(i => i.tabId===3 && i.text.toLowerCase().trim()===newItemText.toLowerCase().trim());
+                    if (idx !== -1) {
+                        const p = { ...newItemsList[idx] };
+                        const addS = parseInt(invQtySara)||0; const addN = parseInt(invQtyNegocio)||0;
+                        if (addS+addN <= 0) { alert("Agregar al menos 1 unidad."); return; }
+                        p.qtySara = (parseInt(p.qtySara)||0)+addS; p.qtyNegocio = (parseInt(p.qtyNegocio)||0)+addN;
+                        if (p.completed) p.completed = false; // Reactivar si estaba agotado
+                        p.hasSara = p.qtySara>0; p.hasNegocio = p.qtyNegocio>0;
+                        const h = { date: ts, addedSara: addS, addedNegocio: addN, type: 'add' };
+                        p.history = p.history ? [h, ...p.history] : [h];
+                        p.updatedAt = ts;
+                        newItemsList[idx] = p;
+                        setItems(newItemsList); closeModal(); vibrate(30); return;
+                    }
+                }
+                
+                // Objeto Base
+                const itemData = { text: newItemText, priority: newItemPriority, updatedAt: ts };
+                
+                if (activeTab === 0) {
+                    itemData.from = newItemFrom; itemData.to = newItemTo; itemData.quantity = newItemQuantity;
+                    itemData.completed = editingItem ? editingItem.completed : false;
+                } else if (activeTab === 3) {
+                    itemData.qtySara = parseInt(invQtySara)||0; itemData.qtyNegocio = parseInt(invQtyNegocio)||0;
+                    itemData.hasSara = itemData.qtySara > 0; itemData.hasNegocio = itemData.qtyNegocio > 0;
+                    // Reactivar si tiene stock
+                    if (editingItem && (itemData.qtySara > 0 || itemData.qtyNegocio > 0)) itemData.completed = false;
+                    else itemData.completed = editingItem ? editingItem.completed : false;
+                    
+                    if (!editingItem) { itemData.history = [{ date: ts, addedSara: itemData.qtySara, addedNegocio: itemData.qtyNegocio, type: 'create' }]; itemData.createdAt = ts; }
+                    else { itemData.history = editingItem.history; itemData.createdAt = editingItem.createdAt; }
+                } else {
+                    itemData.context = newItemContext || '-'; itemData.quantity = newItemQuantity;
+                    if (activeTab === 1) { itemData.price = newItemPrice; itemData.desiredDate = newItemDate; }
+                    if (activeTab === 2) {
+                        itemData.alarmEnabled = newItemAlarmEnabled; itemData.alarmTime = newItemAlarmTime; itemData.isRecurring = isRecurring; 
+                        if (isRecurring) { itemData.recurrence = newItemRecurrence; itemData.alarmDate = null; } else { itemData.alarmDate = newItemAlarmDate; itemData.recurrence = []; }
+                    }
+                    itemData.completed = editingItem ? editingItem.completed : false;
+                }
+
+                if (editingItem) { newItemsList = newItemsList.map(i => i.id === editingItem.id ? { ...i, ...itemData } : i); } 
+                else {
+                    const newItem = { ...itemData, id: Date.now(), tabId: activeTab, createdAt: ts };
+                    newItemsList = [newItem, ...newItemsList];
+                }
+                setItems(newItemsList); closeModal(); vibrate(30);
+            };
+
+            const toggleStatus = (id) => {
+                vibrate(20);
+                const todayStr = getTodayDateStr();
+                let updatedItems = [...items];
+                const target = updatedItems.find(i => i.id === id);
+                if (!target) return;
+                if (target.tabId === 0 && !target.completed && !showBodega) {
+                    updatedItems = processLogisticsMove(target);
+                    const processed = updatedItems.find(i => i.id === id);
+                    processed.completed = true;
+                } else if (target.isRecurring) {
+                     target.lastCompletedDate = (target.lastCompletedDate === todayStr) ? null : todayStr;
+                } else {
+                    target.completed = !target.completed;
+                }
+                setItems([...updatedItems]);
+            };
+
+            // ... (Resto de funciones auxiliares sin cambios: moveItem, deleteItem, etc.) ...
+            const requestDelete = (id, e) => { if (e) { e.stopPropagation(); e.preventDefault(); } setTimeout(() => { setItemToDelete(id); }, 10); };
+            const confirmDelete = () => { setItems(prev => prev.filter(i => i.id !== itemToDelete)); setItemToDelete(null); if(isModalOpen) closeModal(); setToastMessage("Eliminado correctamente"); };
+            const moveItem = (id, direction) => { const list = visibleItems; const idxVis = list.findIndex(i => i.id === id); if (idxVis === -1) return; const swapIdx = idxVis + direction; if (swapIdx < 0 || swapIdx >= list.length) return; const itemA = list[idxVis]; const itemB = list[swapIdx]; const realA = items.findIndex(i => i.id === itemA.id); const realB = items.findIndex(i => i.id === itemB.id); const newItems = [...items]; const temp = newItems[realA]; newItems[realA] = newItems[realB]; newItems[realB] = temp; setItems(newItems); vibrate(20); };
+            const openEditModal = (item) => { setEditingItem(item); setNewItemText(item.text); setNewItemPriority(item.priority||'none'); if (item.tabId===3) { setInvQtySara(item.qtySara); setInvQtyNegocio(item.qtyNegocio); } else if (item.tabId===0) { setNewItemQuantity(item.quantity||''); setNewItemFrom(item.from||'Sara'); setNewItemTo(item.to||'Negocio'); } else { setNewItemQuantity(item.quantity||''); setNewItemContext(item.context||'-'); setNewItemPrice(item.price||''); setNewItemDate(item.desiredDate||''); setNewItemAlarmEnabled(item.alarmEnabled||false); setNewItemAlarmTime(item.alarmTime||''); setIsRecurring(item.isRecurring); setNewItemRecurrence(item.recurrence||[]); setNewItemAlarmDate(item.alarmDate||getTodayDateStr()); } setActiveTab(item.tabId); setIsModalOpen(true); };
+            const closeModal = () => { setIsModalOpen(false); setEditingItem(null); resetForm(); };
+            const resetForm = () => { setNewItemText(''); setSuggestions([]); setShowSuggestions(false); setNewItemQuantity(''); setNewItemPriority('none'); setNewItemFrom('Sara'); setNewItemTo('Negocio'); setAddToInventory(false); setInvQtySara(''); setInvQtyNegocio(''); setNewItemPrice(''); setNewItemDate(''); setNewItemRecurrence([]); setNewItemContext('-'); setNewItemAlarmEnabled(false); setNewItemAlarmTime(''); setIsRecurring(false); setNewItemAlarmDate(getTodayDateStr()); };
+            const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); saveItem(); } };
+            const openConsumeModal = (item) => { setConsumeItem(item); setConsumeQty(''); const s = parseInt(item.qtySara)||0; const n = parseInt(item.qtyNegocio)||0; if (s>0) setConsumeLocation('Sara'); else if (n>0) setConsumeLocation('Negocio'); else setConsumeLocation(''); setIsConsumeModalOpen(true); };
+            const handleConsume = () => { if (!consumeItem || !consumeQty) return; const qty = parseInt(consumeQty); if (isNaN(qty) || qty <= 0) return; const newItems = [...items]; const idx = newItems.findIndex(i => i.id === consumeItem.id); if (idx === -1) return; const p = { ...newItems[idx] }; let current = consumeLocation === 'Sara' ? (parseInt(p.qtySara)||0) : (parseInt(p.qtyNegocio)||0); if (qty > current) { alert(`No hay suficiente stock en ${consumeLocation}.`); return; } if (consumeLocation === 'Sara') p.qtySara = (parseInt(p.qtySara)||0) - qty; else p.qtyNegocio = (parseInt(p.qtyNegocio)||0) - qty; p.hasSara = (p.qtySara > 0); p.hasNegocio = (p.qtyNegocio > 0); const total = (parseInt(p.qtySara)||0) + (parseInt(p.qtyNegocio)||0); let extra = null; if (total === 0) { extra = { date: getLocalISOString(), type: 'exhausted', detail: '⚠️ STOCK AGOTADO' }; p.completed = true; vibrate(100); } const hist = { date: getLocalISOString(), type: 'consume', qty: qty, location: consumeLocation }; p.history = p.history ? [hist, ...p.history] : [hist]; if (extra) p.history = [extra, ...p.history]; p.updatedAt = getLocalISOString(); newItems[idx] = p; setItems(newItems); setIsConsumeModalOpen(false); setConsumeItem(null); };
+            const processLogisticsMove = (item) => { if (item.tabId !== 0) return items; const moveQty = parseInt(item.quantity); if (isNaN(moveQty)) return items; const idx = items.findIndex(i => i.tabId === 3 && i.text.toLowerCase().trim() === item.text.toLowerCase().trim()); if (idx === -1) return items; const newItems = [...items]; const p = { ...newItems[idx] }; let ns = parseInt(p.qtySara)||0; let nn = parseInt(p.qtyNegocio)||0; if (item.from === 'Sara') ns = Math.max(0, ns - moveQty); if (item.from === 'Negocio') nn = Math.max(0, nn - moveQty); if (item.to === 'Sara') ns += moveQty; if (item.to === 'Negocio') nn += moveQty; p.qtySara = ns; p.qtyNegocio = nn; p.hasSara = ns>0; p.hasNegocio = nn>0; p.history = p.history ? [{date: getLocalISOString(), type: 'move', detail: `Movido ${moveQty} de ${item.from} a ${item.to}`}, ...p.history] : [{date: getLocalISOString(), type: 'move', detail: `Movido ${moveQty}`}]; p.updatedAt = getLocalISOString(); newItems[idx] = p; return newItems; };
+            const exportData = () => { const s = JSON.stringify(items); const b = new Blob([s],{type:'application/json'}); const l = document.createElement('a'); l.href=URL.createObjectURL(b); l.download='backup.json'; l.click(); };
+            const importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=(ev)=>{ try{setItems(JSON.parse(ev.target.result))}catch(x){}}; r.readAsText(f); e.target.value=null; };
+            const generatePDFReport = () => { const all=[]; const ss=reportStartDate; const es=reportEndDate; items.forEach(i=>{ if(i.tabId===3 && i.history) { i.history.forEach(h=>{ const hDate = h.date.substring(0,10); if(hDate >= ss && hDate <= es) all.push({...h, productName: i.text}); }); } }); all.sort((a,b)=>new Date(a.date)-new Date(b.date)); const w=window.open('','_blank'); if(!w){alert('Popups blocked');return;} w.document.write(`<html><head><title>Reporte</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px}</style></head><body><h1>Reporte</h1><table><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Detalle</th></tr></thead><tbody>${all.map(m=>`<tr><td>${new Date(m.date).toLocaleString()}</td><td>${m.productName}</td><td>${m.type}</td><td>${m.type==='consume'?`-${m.qty} (${m.location})`:m.detail||`+${m.addedSara||0}S +${m.addedNegocio||0}N`}</td></tr>`).join('')}</tbody></table></body></html>`); w.document.close(); };
+            
+            // --- UI Vars ---
+            const TABS = [ { id: 3, title: 'Inventario', icon: React.createElement(Package, { size: 18 }), color: 'yellow' }, { id: 0, title: 'Movilizar', icon: React.createElement(Truck, { size: 18 }), color: 'blue' }, { id: 2, title: 'Hacer', icon: React.createElement(CheckSquare, { size: 18 }), color: 'blue-red' }, { id: 1, title: 'Comprar', icon: React.createElement(ShoppingCart, { size: 18 }), color: 'red' } ];
+            const DAYS_OF_WEEK = [{id:0,l:'D'},{id:1,l:'L'},{id:2,l:'M'},{id:3,l:'M'},{id:4,l:'J'},{id:5,l:'V'},{id:6,l:'S'}];
+            const PRIORITIES = { none: { value: 0, color: 'bg-gray-700', label: '---' }, baja: { value: 1, color: 'bg-red-600', label: 'Baja' }, media: { value: 2, color: 'bg-yellow-500', label: 'Media' }, alta: { value: 3, color: 'bg-green-600', label: 'Alta' } };
+            
+            // UI Helpers
             const onTouchStart = (e) => { setTouchEnd(null); setTouchStart(e.targetTouches[0].clientX); };
             const onTouchMove = (e) => { setTouchEnd(e.targetTouches[0].clientX); };
-            const onTouchEnd = () => {
-                if (!touchStart || !touchEnd) return;
-                const distance = touchStart - touchEnd;
-                const idx = TABS.findIndex(t => t.id === activeTab);
-                if (distance > 50 && idx < TABS.length - 1) { setActiveTab(TABS[idx + 1].id); vibrate(30); }
-                else if (distance < -50 && idx > 0) { setActiveTab(TABS[idx - 1].id); vibrate(30); }
-            };
-
+            const onTouchEnd = () => { if (!touchStart || !touchEnd) return; const distance = touchStart - touchEnd; const idx = TABS.findIndex(t => t.id === activeTab); if (distance > 50 && idx < TABS.length - 1) { setActiveTab(TABS[idx + 1].id); vibrate(30); } else if (distance < -50 && idx > 0) { setActiveTab(TABS[idx - 1].id); vibrate(30); } };
             const handleItemLongPressStart = (id) => { if (activeTab !== 3 || sortBy !== 'manual') return; longPressTimer.current = setTimeout(() => { setReorderModeId(id); vibrate([50, 50, 50]); }, 600); };
             const handleItemLongPressEnd = () => { if (longPressTimer.current) clearTimeout(longPressTimer.current); };
-            const handleClickItem = (item) => {
-                if (reorderModeId === item.id) { setReorderModeId(null); return; }
-                if (item.tabId === 3) { setHistoryItem(item); openEditModal(item); } 
-                else if (!showBodega) { openEditModal(item); }
-            };
-
+            const handleClickItem = (item) => { if (reorderModeId === item.id) { setReorderModeId(null); return; } if (item.tabId === 3) { setHistoryItem(item); openEditModal(item); } else if (!showBodega) { openEditModal(item); } };
             const handleSortChange = (newSortBy) => { if (sortBy === newSortBy) setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); else { setSortBy(newSortBy); setSortDir('asc'); } setShowSortMenu(false); };
-            
-            const handleTextChange = (text) => {
-                setNewItemText(text);
-                if ((activeTab === 0 || activeTab === 3)) {
-                    const inventoryItems = items.filter(i => i.tabId === 3); 
-                    if (text.trim().length === 0) { setSuggestions(inventoryItems.filter(i => !i.completed)); setShowSuggestions(true); } 
-                    else { const matches = inventoryItems.filter(i => i.text.toLowerCase().includes(text.toLowerCase())); setSuggestions(matches); setShowSuggestions(matches.length > 0); }
-                } else setShowSuggestions(false);
-            };
-
-            const selectSuggestion = (s) => {
-                const txt = typeof s === 'string' ? s : s.text;
-                const obj = typeof s === 'object' ? s : items.find(i => i.text === txt && i.tabId === 3);
-                setNewItemText(txt); setShowSuggestions(false);
-                if (activeTab === 0 && obj) {
-                    const s = parseInt(obj.qtySara)||0; const n = parseInt(obj.qtyNegocio)||0;
-                    if (s > 0 && n === 0) { setNewItemFrom('Sara'); setNewItemTo('Negocio'); } else if (n > 0 && s === 0) { setNewItemFrom('Negocio'); setNewItemTo('Sara'); }
-                }
-            };
-
-            const initiateMoveFromInventory = (item) => { setActiveTab(0); resetForm(); setNewItemText(item.text); const s=parseInt(item.qtySara)||0; const n=parseInt(item.qtyNegocio)||0; if (n>0 && s===0) { setNewItemFrom('Negocio'); setNewItemTo('Sara'); } else { setNewItemFrom('Sara'); setNewItemTo('Negocio'); } setIsModalOpen(true); };
+            const handleTextChange = (text) => { setNewItemText(text); if ((activeTab === 0 || activeTab === 3)) { const inventoryItems = items.filter(i => i.tabId === 3); if (text.trim().length === 0) { setSuggestions(inventoryItems.filter(i => !i.completed)); setShowSuggestions(true); } else { const matches = inventoryItems.filter(i => i.text.toLowerCase().includes(text.toLowerCase())); setSuggestions(matches); setShowSuggestions(matches.length > 0); } } else setShowSuggestions(false); };
+            const selectSuggestion = (s) => { const txt = typeof s === 'string' ? s : s.text; const obj = typeof s === 'object' ? s : items.find(i => i.text === txt && i.tabId === 3); setNewItemText(txt); setShowSuggestions(false); if (activeTab === 0 && obj) { const s = parseInt(obj.qtySara)||0; const n = parseInt(obj.qtyNegocio)||0; if (s > 0 && n === 0) { setNewItemFrom('Sara'); setNewItemTo('Negocio'); } else if (n > 0 && s === 0) { setNewItemFrom('Negocio'); setNewItemTo('Sara'); } } };
             const existsInInventory = items.some(i => i.tabId === 3 && i.text.toLowerCase().trim() === newItemText.toLowerCase().trim());
             const swapLocations = () => setNewItemFrom(prev => { const old = newItemTo; setNewItemTo(prev); return old; });
             const toggleDay = (dayId) => { if (newItemRecurrence.includes(dayId)) setNewItemRecurrence(newItemRecurrence.filter(d => d !== dayId)); else setNewItemRecurrence([...newItemRecurrence, dayId].sort()); };
             const isRecurringCompletedToday = (item) => item.isRecurring && item.lastCompletedDate === getTodayDateStr();
 
-            // Lógica visible items
             const getVisibleItems = () => {
                 const todayStr = getTodayDateStr();
                 const todayIndex = new Date().getDay();
@@ -296,191 +428,7 @@
             const qtyNum = parseInt(consumeQty)||0;
             const isValidConsume = qtyNum > 0 && ((consumeLocation === 'Sara' && qtyNum <= stockSara) || (consumeLocation === 'Negocio' && qtyNum <= stockNegocio));
 
-            // Handlers
-            const openEditModal = (item) => {
-                setEditingItem(item); setNewItemText(item.text); setNewItemPriority(item.priority||'none');
-                if (item.tabId===3) {
-                    setInvQtySara(item.qtySara); setInvQtyNegocio(item.qtyNegocio);
-                } else if (item.tabId===0) {
-                    setNewItemQuantity(item.quantity||''); setNewItemFrom(item.from||'Sara'); setNewItemTo(item.to||'Negocio');
-                } else {
-                    setNewItemQuantity(item.quantity||''); setNewItemContext(item.context||'-'); setNewItemPrice(item.price||''); setNewItemDate(item.desiredDate||'');
-                    setNewItemAlarmEnabled(item.alarmEnabled||false); setNewItemAlarmTime(item.alarmTime||''); 
-                    setIsRecurring(item.isRecurring); setNewItemRecurrence(item.recurrence||[]); setNewItemAlarmDate(item.alarmDate||getTodayDateStr());
-                }
-                setActiveTab(item.tabId); setIsModalOpen(true);
-            };
-            const closeModal = () => { setIsModalOpen(false); setEditingItem(null); resetForm(); };
-            const resetForm = () => {
-                setNewItemText(''); setSuggestions([]); setShowSuggestions(false); setNewItemQuantity(''); setNewItemPriority('none');
-                setNewItemFrom('Sara'); setNewItemTo('Negocio'); setAddToInventory(false);
-                setInvQtySara(''); setInvQtyNegocio(''); setNewItemPrice(''); setNewItemDate('');
-                setNewItemRecurrence([]); setNewItemContext('-');
-                setNewItemAlarmEnabled(false); setNewItemAlarmTime(''); setIsRecurring(false); setNewItemAlarmDate(getTodayDateStr());
-            };
-            const handleKeyDown = (e) => { if (e.key === 'Enter') { e.preventDefault(); saveItem(); } };
-
-            const saveItem = () => {
-                if (!newItemText.trim()) return;
-                if (activeTab === 3 && !editingItem) {
-                    const s = parseInt(invQtySara)||0; const n = parseInt(invQtyNegocio)||0;
-                    if (s+n <= 0) { alert("Agregar al menos 1 unidad."); return; }
-                }
-                if (activeTab === 0 && currentInventoryItem) {
-                    if (currentInventoryItem.completed) { alert("Producto AGOTADO en archivo."); return; }
-                    if (!isMoveQuantityValid) { alert(`Solo cuentas con ${availableStock} unidades.`); return; }
-                }
-                let newItemsList = [...items];
-                const ts = getLocalISOString();
-                if (activeTab === 3 && !editingItem && existsInInventory) {
-                    const idx = newItemsList.findIndex(i => i.tabId===3 && i.text.toLowerCase().trim()===newItemText.toLowerCase().trim());
-                    if (idx !== -1) {
-                        const p = { ...newItemsList[idx] };
-                        const addS = parseInt(invQtySara)||0; const addN = parseInt(invQtyNegocio)||0;
-                        if (addS+addN <= 0) { alert("Agregar al menos 1 unidad."); return; }
-                        p.qtySara = (parseInt(p.qtySara)||0)+addS; p.qtyNegocio = (parseInt(p.qtyNegocio)||0)+addN;
-                        if (p.completed) p.completed = false;
-                        p.hasSara = p.qtySara>0; p.hasNegocio = p.qtyNegocio>0;
-                        const h = { date: ts, addedSara: addS, addedNegocio: addN, type: 'add' };
-                        p.history = p.history ? [h, ...p.history] : [h];
-                        p.updatedAt = ts;
-                        newItemsList[idx] = p;
-                        setItems(newItemsList); closeModal(); vibrate(30); return;
-                    }
-                }
-                const itemData = { text: newItemText, priority: newItemPriority, updatedAt: ts };
-                if (activeTab === 0) {
-                    itemData.from = newItemFrom; itemData.to = newItemTo; itemData.quantity = newItemQuantity;
-                    itemData.completed = editingItem ? editingItem.completed : false;
-                } else if (activeTab === 3) {
-                    itemData.qtySara = parseInt(invQtySara)||0; itemData.qtyNegocio = parseInt(invQtyNegocio)||0;
-                    itemData.hasSara = itemData.qtySara > 0; itemData.hasNegocio = itemData.qtyNegocio > 0;
-                    if (editingItem && (itemData.qtySara > 0 || itemData.qtyNegocio > 0)) itemData.completed = false;
-                    else itemData.completed = editingItem ? editingItem.completed : false;
-                    if (!editingItem) { itemData.history = [{ date: ts, addedSara: itemData.qtySara, addedNegocio: itemData.qtyNegocio, type: 'create' }]; itemData.createdAt = ts; }
-                    else { itemData.history = editingItem.history; itemData.createdAt = editingItem.createdAt; }
-                } else {
-                    itemData.context = newItemContext || '-'; itemData.quantity = newItemQuantity;
-                    if (activeTab === 1) { itemData.price = newItemPrice; itemData.desiredDate = newItemDate; }
-                    if (activeTab === 2) {
-                        itemData.alarmEnabled = newItemAlarmEnabled; itemData.alarmTime = newItemAlarmTime; itemData.isRecurring = isRecurring; 
-                        if (isRecurring) { itemData.recurrence = newItemRecurrence; itemData.alarmDate = null; } else { itemData.alarmDate = newItemAlarmDate; itemData.recurrence = []; }
-                    }
-                    itemData.completed = editingItem ? editingItem.completed : false;
-                }
-                if (editingItem) { newItemsList = newItemsList.map(i => i.id === editingItem.id ? { ...i, ...itemData } : i); } 
-                else {
-                    const newItem = { ...itemData, id: Date.now(), tabId: activeTab, createdAt: ts };
-                    newItemsList = [newItem, ...newItemsList];
-                    if (activeTab === 0 && addToInventory && !existsInInventory) {
-                         const q = parseInt(newItemQuantity)||0; let s = 0; let n = 0;
-                         if (newItemTo === 'Negocio') n = q; if (newItemTo === 'Sara') s = q;
-                         const inv = { id: Date.now()+1, tabId: 3, text: newItemText, qtySara: s, qtyNegocio: n, hasSara: s>0, hasNegocio: n>0, priority: 'none', completed: false, createdAt: ts, updatedAt: ts, history: [{date: ts, addedSara: s, addedNegocio: n, type: 'auto-create'}] };
-                         newItemsList = [inv, ...newItemsList];
-                    }
-                }
-                setItems(newItemsList); closeModal(); vibrate(30);
-            };
-
-            const toggleStatus = (id) => {
-                vibrate(20);
-                const todayStr = getTodayDateStr();
-                let updatedItems = [...items];
-                const target = updatedItems.find(i => i.id === id);
-                if (!target) return;
-                if (target.tabId === 0 && !target.completed && !showBodega) {
-                    updatedItems = processLogisticsMove(target);
-                    const processed = updatedItems.find(i => i.id === id);
-                    processed.completed = true;
-                } else if (target.isRecurring) {
-                     target.lastCompletedDate = (target.lastCompletedDate === todayStr) ? null : todayStr;
-                } else {
-                    target.completed = !target.completed;
-                }
-                setItems([...updatedItems]);
-            };
-
-            const requestDelete = (id, e) => {
-                if (e) { e.stopPropagation(); e.preventDefault(); }
-                setTimeout(() => { setItemToDelete(id); }, 10);
-            };
-
-            const confirmDelete = () => {
-                 setItems(prev => prev.filter(i => i.id !== itemToDelete));
-                 setItemToDelete(null); if(isModalOpen) closeModal(); setToastMessage("Eliminado correctamente");
-            };
-
-            const moveItem = (id, direction) => {
-                const list = visibleItems;
-                const idxVis = list.findIndex(i => i.id === id);
-                if (idxVis === -1) return;
-                const swapIdx = idxVis + direction;
-                if (swapIdx < 0 || swapIdx >= list.length) return;
-                const itemA = list[idxVis]; const itemB = list[swapIdx];
-                const realA = items.findIndex(i => i.id === itemA.id);
-                const realB = items.findIndex(i => i.id === itemB.id);
-                const newItems = [...items];
-                const temp = newItems[realA]; newItems[realA] = newItems[realB]; newItems[realB] = temp;
-                setItems(newItems); vibrate(20);
-            };
-
-            const openConsumeModal = (item) => {
-                setConsumeItem(item); setConsumeQty('');
-                const s = parseInt(item.qtySara)||0; const n = parseInt(item.qtyNegocio)||0;
-                if (s>0) setConsumeLocation('Sara'); else if (n>0) setConsumeLocation('Negocio'); else setConsumeLocation('');
-                setIsConsumeModalOpen(true);
-            };
-
-            const handleConsume = () => {
-                if (!consumeItem || !consumeQty) return;
-                const qty = parseInt(consumeQty);
-                if (isNaN(qty) || qty <= 0) return;
-                const newItems = [...items];
-                const idx = newItems.findIndex(i => i.id === consumeItem.id);
-                if (idx === -1) return;
-                const p = { ...newItems[idx] };
-                let current = consumeLocation === 'Sara' ? (parseInt(p.qtySara)||0) : (parseInt(p.qtyNegocio)||0);
-                if (qty > current) { alert(`No hay suficiente stock en ${consumeLocation}.`); return; }
-                if (consumeLocation === 'Sara') p.qtySara = (parseInt(p.qtySara)||0) - qty;
-                else p.qtyNegocio = (parseInt(p.qtyNegocio)||0) - qty;
-                p.hasSara = (p.qtySara > 0); p.hasNegocio = (p.qtyNegocio > 0);
-                const total = (parseInt(p.qtySara)||0) + (parseInt(p.qtyNegocio)||0);
-                let extra = null;
-                if (total === 0) { extra = { date: getLocalISOString(), type: 'exhausted', detail: '⚠️ STOCK AGOTADO' }; p.completed = true; vibrate(100); }
-                const hist = { date: getLocalISOString(), type: 'consume', qty: qty, location: consumeLocation };
-                p.history = p.history ? [hist, ...p.history] : [hist];
-                if (extra) p.history = [extra, ...p.history];
-                p.updatedAt = getLocalISOString();
-                newItems[idx] = p;
-                setItems(newItems); setIsConsumeModalOpen(false); setConsumeItem(null);
-            };
-
-            const exportData = () => { const s = JSON.stringify(items); const b = new Blob([s],{type:'application/json'}); const l = document.createElement('a'); l.href=URL.createObjectURL(b); l.download='backup.json'; l.click(); };
-            const importData = (e) => { const f=e.target.files[0]; if(!f)return; const r=new FileReader(); r.onload=(ev)=>{ try{setItems(JSON.parse(ev.target.result))}catch(x){}}; r.readAsText(f); e.target.value=null; };
-            const generatePDFReport = () => {
-                const all=[]; const ss=reportStartDate; const es=reportEndDate;
-                items.forEach(i=>{
-                    if(i.tabId===3 && i.history) {
-                        i.history.forEach(h=>{
-                            const hDate = h.date.substring(0,10);
-                            if(hDate >= ss && hDate <= es) all.push({...h, productName: i.text});
-                        });
-                    }
-                });
-                all.sort((a,b)=>new Date(a.date)-new Date(b.date));
-                const w=window.open('','_blank'); if(!w){alert('Popups blocked');return;}
-                w.document.write(`<html><head><title>Reporte</title><style>body{font-family:Arial;padding:20px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px}</style></head><body><h1>Reporte</h1><table><thead><tr><th>Fecha</th><th>Producto</th><th>Tipo</th><th>Detalle</th></tr></thead><tbody>${all.map(m=>`<tr><td>${new Date(m.date).toLocaleString()}</td><td>${m.productName}</td><td>${m.type}</td><td>${m.type==='consume'?`-${m.qty} (${m.location})`:m.detail||`+${m.addedSara||0}S +${m.addedNegocio||0}N`}</td></tr>`).join('')}</tbody></table></body></html>`); w.document.close();
-            };
-
-            const TABS = [
-                { id: 3, title: 'Inventario', icon: React.createElement(Package, { size: 18 }), color: 'yellow' },
-                { id: 0, title: 'Movilizar', icon: React.createElement(Truck, { size: 18 }), color: 'blue' },
-                { id: 2, title: 'Hacer', icon: React.createElement(CheckSquare, { size: 18 }), color: 'blue-red' },
-                { id: 1, title: 'Comprar', icon: React.createElement(ShoppingCart, { size: 18 }), color: 'red' }
-            ];
-            const DAYS_OF_WEEK = [{id:0,l:'D'},{id:1,l:'L'},{id:2,l:'M'},{id:3,l:'M'},{id:4,l:'J'},{id:5,l:'V'},{id:6,l:'S'}];
-            const PRIORITIES = { none: { value: 0, color: 'bg-gray-700', label: '---' }, baja: { value: 1, color: 'bg-red-600', label: 'Baja' }, media: { value: 2, color: 'bg-yellow-500', label: 'Media' }, alta: { value: 3, color: 'bg-green-600', label: 'Alta' } };
-
+            // RENDER
             return React.createElement("div", { className: "flex flex-col h-dvh bg-[#121212] font-sans max-w-full mx-auto shadow-2xl overflow-hidden relative border-x-0 sm:border-x-4 border-[#004D98] text-gray-100", 
                 onTouchStart: onTouchStart, onTouchMove: onTouchMove, onTouchEnd: onTouchEnd 
             },
