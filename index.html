@@ -2,19 +2,50 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AudioLibro Pro - Pova Edition</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AudioLibro Pro - Pova Universal</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;600;700&display=swap');
-        body { font-family: 'Plus Jakarta Sans', sans-serif; background-color: #020617; color: #f8fafc; }
-        .glass { background: rgba(30, 41, 59, 0.5); backdrop-filter: blur(16px); border: 1px solid rgba(255,255,255,0.05); }
-        .highlight-word { background: #6366f1; color: white; border-radius: 4px; padding: 0 4px; transition: all 0.1s; border-bottom: 2px solid #fff; }
-        .subtitle-bar { background: linear-gradient(to top, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.8) 100%); border-top: 1px solid rgba(99, 102, 241, 0.3); }
-        .active-tab { border-bottom: 3px solid #6366f1; color: #6366f1; }
-        input[type="range"] { accent-color: #6366f1; }
+        
+        :root {
+            --bg-deep: #020617;
+            --accent: #6366f1;
+            --glass: rgba(30, 41, 59, 0.5);
+        }
+
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background-color: var(--bg-deep); 
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+
+        .glass { 
+            background: var(--glass); 
+            backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255,255,255,0.05); 
+        }
+
+        .highlight-word { 
+            background: var(--accent); 
+            color: white; 
+            border-radius: 4px; 
+            padding: 0 4px; 
+            transition: all 0.1s; 
+            border-bottom: 2px solid #fff; 
+        }
+
+        .active-tab { 
+            color: var(--accent);
+            background: rgba(99, 102, 241, 0.1);
+        }
+        
+        input[type="range"] { accent-color: var(--accent); }
 
         #textContent:empty:before {
             content: attr(placeholder);
@@ -35,147 +66,167 @@
 
         .toast-notification {
             position: fixed;
-            top: 2rem;
+            top: 1rem;
             left: 50%;
-            transform: translateX(-50%) translateY(-150%);
+            transform: translateX(-50%) translateY(-200%);
             transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            z-index: 200;
+            z-index: 999;
         }
         .toast-notification.show { transform: translateX(-50%) translateY(0); }
+
+        /* Mobile specific adjustments */
+        @media (max-width: 640px) {
+            .nav-button {
+                padding-left: 0.5rem;
+                padding-right: 0.5rem;
+                font-size: 0.65rem;
+            }
+        }
     </style>
 </head>
-<body class="overflow-x-hidden pb-32">
+<body class="flex flex-col h-screen">
 
     <!-- Toast Notification System -->
-    <div id="toast" class="toast-notification bg-indigo-600 text-white px-6 py-3 rounded-2xl shadow-2xl font-bold flex items-center gap-3">
-        <i class="fas fa-check-circle"></i>
+    <div id="toast" class="toast-notification glass text-white px-6 py-3 rounded-full shadow-2xl font-bold flex items-center gap-3">
+        <i class="fas fa-check-circle text-indigo-400"></i>
         <span id="toastMessage">Texto guardado</span>
     </div>
 
-    <div class="flex flex-col min-h-screen">
-        <!-- Navegación de Pestañas -->
-        <nav class="flex justify-around bg-slate-900/90 sticky top-0 z-[60] border-b border-white/5 p-2 backdrop-blur-md">
-            <button onclick="switchTab('reader')" id="tabReader" class="flex-1 py-3 font-bold text-sm active-tab transition-all">
-                <i class="fas fa-play-circle mr-2"></i>LECTOR
-            </button>
-            <button onclick="switchTab('library')" id="tabLibrary" class="flex-1 py-3 font-bold text-sm text-slate-500 transition-all">
-                <i class="fas fa-books mr-2"></i>BIBLIOTECA
-            </button>
-        </nav>
-
-        <!-- Contenido: Lector -->
-        <main id="viewReader" class="flex-1 flex flex-col p-4 gap-4 animate-in fade-in duration-300">
-            <!-- Cuadro de Texto -->
-            <div class="glass rounded-[2rem] p-6 flex flex-col h-[35vh] relative">
-                <div id="textContent" 
-                     contenteditable="true" 
-                     class="flex-1 overflow-y-auto outline-none text-lg leading-relaxed text-slate-300 custom-scrollbar" 
-                     placeholder="Welcome! Paste your story here. Emma (Natural) is active. Your texts can now be saved to the library or exported as files."></div>
-                <div id="wordCount" class="absolute bottom-4 right-6 text-[10px] text-slate-500 font-bold uppercase tracking-widest">0 palabras</div>
+    <!-- Header & Nav Refined -->
+    <header class="glass sticky top-0 z-[100] border-b border-white/5 shadow-2xl">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-2 flex-shrink-0">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-headphones-simple text-sm"></i>
+                </div>
+                <h1 class="font-bold text-base sm:text-lg tracking-tight hidden xs:block">AudioLibro <span class="text-indigo-400">Pro</span></h1>
             </div>
+            
+            <nav class="flex flex-1 max-w-[280px] bg-white/5 rounded-2xl p-1 gap-1">
+                <button onclick="switchTab('reader')" id="tabReader" class="nav-button flex-1 py-2.5 rounded-xl font-bold text-[11px] sm:text-xs active-tab transition-all whitespace-nowrap flex items-center justify-center gap-2">
+                    <i class="fas fa-play-circle"></i>LECTOR
+                </button>
+                <button onclick="switchTab('library')" id="tabLibrary" class="nav-button flex-1 py-2.5 rounded-xl font-bold text-[11px] sm:text-xs text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap flex items-center justify-center gap-2">
+                    <i class="fas fa-books"></i>BIBLIOTECA
+                </button>
+            </nav>
+        </div>
+    </header>
 
-            <!-- Panel de Rango de Páginas (Solo visible con PDF) -->
-            <div id="pdfRangePanel" class="hidden glass rounded-[1.5rem] p-4 border border-indigo-500/20 animate-in slide-in-from-top-2">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center gap-3">
-                        <i class="fas fa-file-pdf text-red-400"></i>
-                        <div>
-                            <p class="text-xs font-bold text-white">Rango de Páginas</p>
-                            <p id="pdfInfoLabel" class="text-[10px] text-slate-500 uppercase">Detectando páginas...</p>
-                        </div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <input type="number" id="startPage" value="1" min="1" class="w-16 bg-slate-800 border border-white/10 rounded-lg p-2 text-xs text-center outline-none focus:ring-1 ring-indigo-500">
-                        <span class="text-slate-500 text-xs">a</span>
-                        <input type="number" id="endPage" value="1" min="1" class="w-16 bg-slate-800 border border-white/10 rounded-lg p-2 text-xs text-center outline-none focus:ring-1 ring-indigo-500">
-                        <button onclick="processPdfRange()" class="bg-indigo-600 px-3 py-2 rounded-lg text-[10px] font-bold">CARGAR</button>
+    <!-- Main Content Area -->
+    <main class="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 lg:p-8">
+        <div class="max-w-5xl mx-auto space-y-6 pb-24">
+            
+            <!-- Vista Lector -->
+            <div id="viewReader" class="space-y-6 animate-in fade-in duration-300">
+                <div class="glass rounded-[2rem] p-6 flex flex-col h-[40vh] sm:h-[50vh] relative shadow-inner">
+                    <div id="textContent" 
+                         contenteditable="true" 
+                         class="flex-1 overflow-y-auto outline-none text-lg leading-relaxed text-slate-300 custom-scrollbar pr-2" 
+                         placeholder="Welcome! Paste your story here. Emma (Natural) is the default English narrator. Your texts are saved safely in the library."></div>
+                    <div class="absolute bottom-4 right-6 flex items-center gap-3 bg-slate-900/80 px-3 py-1.5 rounded-full border border-white/5">
+                         <span id="wordCount" class="text-[9px] text-slate-400 font-bold uppercase tracking-widest">0 palabras</span>
+                         <button onclick="clearContent()" class="text-slate-400 hover:text-red-400 transition-colors" title="Limpiar todo"><i class="fas fa-eraser"></i></button>
                     </div>
                 </div>
-            </div>
 
-            <!-- Panel de Controles -->
-            <div class="glass rounded-[2rem] p-6 space-y-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div class="space-y-1">
-                        <label class="text-[10px] font-bold text-slate-500 ml-1 tracking-widest uppercase">Narrador Seleccionado</label>
-                        <select id="voiceSelect" onchange="warmUpVoice()" class="w-full bg-slate-800 p-4 rounded-2xl text-xs outline-none border-none ring-1 ring-white/10 text-indigo-100"></select>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 gap-3">
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-slate-500 ml-1 tracking-widest uppercase">Volumen</label>
-                            <div class="flex items-center gap-2 bg-slate-800 p-3.5 rounded-2xl ring-1 ring-white/5">
-                                <i class="fas fa-volume-up text-xs text-slate-500"></i>
-                                <input type="range" id="volumeRange" min="0" max="1" step="0.1" value="1" class="flex-1">
+                <!-- Selector de Rango PDF -->
+                <div id="pdfRangePanel" class="hidden glass rounded-[1.5rem] p-4 border border-indigo-500/20">
+                    <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-3">
+                            <i class="fas fa-file-pdf text-red-500 text-xl"></i>
+                            <div>
+                                <p class="text-xs font-bold text-white">Rango del Documento</p>
+                                <p id="pdfInfoLabel" class="text-[10px] text-slate-500 uppercase">Detectando páginas...</p>
                             </div>
                         </div>
-                        <div class="space-y-1">
-                            <label class="text-[10px] font-bold text-slate-500 ml-1 tracking-widest uppercase">Velocidad</label>
-                            <div class="flex items-center gap-2 bg-slate-800 p-3.5 rounded-2xl ring-1 ring-white/5">
-                                <input type="range" id="speedRange" min="0.5" max="2" step="0.1" value="1" class="flex-1">
-                                <span id="speedValue" class="text-xs font-bold text-indigo-400 w-6">1.0</span>
-                            </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <input type="number" id="startPage" value="1" min="1" class="flex-1 sm:w-14 bg-slate-900 border border-white/10 rounded-xl p-2 text-xs text-center outline-none">
+                            <span class="text-slate-500">a</span>
+                            <input type="number" id="endPage" value="1" min="1" class="flex-1 sm:w-14 bg-slate-900 border border-white/10 rounded-xl p-2 text-xs text-center outline-none">
+                            <button onclick="processPdfRange()" class="bg-indigo-600 hover:bg-indigo-500 px-4 py-2 rounded-xl text-[10px] font-bold transition-all whitespace-nowrap">CARGAR</button>
                         </div>
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-4">
-                    <div class="flex items-center justify-center gap-4">
-                        <!-- Botón Exportar Texto -->
-                        <button id="exportBtn" onclick="exportTextAsFile()" title="Exportar como archivo .txt" class="w-14 h-14 rounded-full bg-slate-800 flex flex-col items-center justify-center text-indigo-400 hover:text-white transition-all active:scale-90 border border-white/5 gap-1">
-                            <i class="fas fa-file-export text-xs"></i>
-                            <span class="text-[8px] font-bold uppercase">Txt</span>
+                <!-- Controles -->
+                <div class="glass rounded-[2.5rem] p-6 sm:p-8 space-y-8 shadow-2xl">
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-slate-500 ml-1 tracking-widest uppercase">Narrador Automático</label>
+                            <select id="voiceSelect" onchange="warmUpVoice()" class="w-full bg-slate-900/50 p-4 rounded-2xl text-[11px] sm:text-xs outline-none border border-white/5 ring-1 ring-white/5 text-indigo-100"></select>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-500 ml-1 tracking-widest uppercase">Volumen</label>
+                                <div class="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl ring-1 ring-white/5 border border-white/5">
+                                    <i class="fas fa-volume-low text-xs text-slate-500"></i>
+                                    <input type="range" id="volumeRange" min="0" max="1" step="0.1" value="1" class="flex-1">
+                                </div>
+                            </div>
+                            <div class="space-y-2">
+                                <label class="text-[10px] font-bold text-slate-500 ml-1 tracking-widest uppercase">Velocidad</label>
+                                <div class="flex items-center gap-3 bg-slate-900/50 p-4 rounded-2xl ring-1 ring-white/5 border border-white/5">
+                                    <input type="range" id="speedRange" min="0.5" max="2" step="0.1" value="1" class="flex-1">
+                                    <span id="speedValue" class="text-xs font-bold text-indigo-400">1.0</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-center gap-4">
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <button id="exportBtn" onclick="exportTextAsFile()" title="Exportar TXT" class="w-14 h-14 rounded-full glass flex items-center justify-center text-indigo-400 hover:text-white transition-all shadow-lg border border-white/5 active:scale-95">
+                                <i class="fas fa-file-export"></i>
+                            </button>
+                            <button id="saveBtn" onclick="saveCurrentToLibrary()" title="Guardar en Biblioteca" class="w-14 h-14 rounded-full glass flex items-center justify-center text-indigo-400 hover:text-white transition-all shadow-lg border border-white/5 active:scale-95">
+                                <i class="fas fa-bookmark"></i>
+                            </button>
+                        </div>
+
+                        <button id="playBtn" onclick="handlePlay()" class="w-full bg-indigo-600 hover:bg-indigo-500 py-5 rounded-[2rem] font-bold text-base sm:text-lg shadow-xl shadow-indigo-600/20 active:scale-95 transition-all flex items-center justify-center gap-4">
+                            <i class="fas fa-play"></i> REPRODUCIR LIBRO
                         </button>
                         
-                        <button id="playBtn" onclick="handlePlay()" class="flex-1 max-w-xs bg-indigo-600 py-5 rounded-[2rem] font-bold text-lg shadow-xl shadow-indigo-900/40 active:scale-95 transition-all flex items-center justify-center gap-3">
-                            <i class="fas fa-play"></i> REPRODUCIR
-                        </button>
-
-                        <button id="saveBtn" onclick="saveCurrentToLibrary()" title="Guardar en Biblioteca" class="w-14 h-14 rounded-full bg-slate-800 flex items-center justify-center text-indigo-400 hover:text-white transition-all active:scale-90 border border-white/5">
-                            <i class="fas fa-bookmark"></i>
-                        </button>
-                    </div>
-
-                    <div class="flex gap-3">
-                        <label class="flex-1 bg-slate-800/50 py-4 rounded-2xl text-[10px] font-bold text-slate-300 border border-white/5 active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer">
-                            <i class="fas fa-file-pdf text-red-400"></i> IMPORTAR LIBRO (PDF/TXT)
+                        <label class="w-full sm:w-auto flex-none bg-slate-800/50 hover:bg-slate-700/50 px-8 py-5 rounded-[2rem] text-xs font-bold text-slate-300 border border-white/5 cursor-pointer transition-all text-center">
+                            <i class="fas fa-file-pdf mr-2"></i> PDF / TXT
                             <input type="file" id="fileInput" class="hidden" accept=".pdf,.txt">
                         </label>
                     </div>
                 </div>
             </div>
-        </main>
 
-        <!-- Contenido: Biblioteca -->
-        <section id="viewLibrary" class="hidden flex-1 p-4 animate-in slide-in-from-right duration-300">
-            <h2 class="text-xl font-bold mb-6 px-2 flex items-center gap-2">
-                <i class="fas fa-layer-group text-indigo-500"></i> Mi Biblioteca
-            </h2>
-            <div id="libraryList" class="space-y-4">
-                <div class="p-12 text-center text-slate-600 italic">No hay libros guardados todavía.</div>
-            </div>
-        </section>
-
-        <!-- Barra de Subtítulos -->
-        <div id="subtitleBar" class="fixed bottom-0 left-0 w-full p-8 subtitle-bar transform translate-y-full transition-all duration-500 z-[100] backdrop-blur-xl">
-            <div class="max-w-4xl mx-auto flex flex-col gap-4">
-                <div id="subtitleText" class="text-center text-2xl font-bold leading-tight text-white drop-shadow-md"></div>
-                
-                <div class="flex justify-center items-center gap-8 mt-2">
-                    <button onclick="skipSeconds(-10)" class="text-slate-400 hover:text-white"><i class="fas fa-undo-alt text-xl"></i></button>
-                    <button onclick="handlePlay()" id="miniPlayBtn" class="w-14 h-14 bg-white text-black rounded-full flex items-center justify-center shadow-lg active:scale-90">
-                        <i class="fas fa-pause text-xl"></i>
-                    </button>
-                    <button onclick="skipSeconds(10)" class="text-slate-400 hover:text-white"><i class="fas fa-redo-alt text-xl"></i></button>
+            <!-- Vista Biblioteca -->
+            <div id="viewLibrary" class="hidden space-y-6 animate-in slide-in-from-right duration-300">
+                <h2 class="text-2xl font-bold flex items-center gap-3">
+                    <i class="fas fa-book-bookmark text-indigo-500"></i> Mis Cuentos
+                </h2>
+                <div id="libraryList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Dinámico -->
                 </div>
             </div>
         </div>
+    </main>
 
-        <!-- Audio Silencioso para Segundo Plano -->
-        <audio id="silentAudio" loop src="data:audio/wav;base64,UklGRigAAABXQVZFlm10IBAAAAABAAEARKwAAIhAAQACABAAZGF0YQQAAAAAAA=="></audio>
+    <!-- Subtitles Overlay -->
+    <div id="subtitleBar" class="fixed bottom-0 left-0 w-full p-6 sm:p-10 subtitle-bar transform translate-y-full transition-all duration-500 z-[110] backdrop-blur-2xl">
+        <div class="max-w-4xl mx-auto space-y-6">
+            <div id="subtitleText" class="text-center text-lg sm:text-3xl font-bold leading-tight text-white drop-shadow-xl"></div>
+            
+            <div class="flex justify-center items-center gap-10">
+                <button onclick="skipSeconds(-10)" class="text-slate-400 hover:text-white transition-colors p-2"><i class="fas fa-backward-step text-2xl"></i></button>
+                <button onclick="handlePlay()" id="miniPlayBtn" class="w-14 h-14 sm:w-16 sm:h-16 bg-white text-black rounded-full flex items-center justify-center shadow-2xl active:scale-90 transition-all">
+                    <i class="fas fa-pause text-xl sm:text-2xl"></i>
+                </button>
+                <button onclick="skipSeconds(10)" class="text-slate-400 hover:text-white transition-colors p-2"><i class="fas fa-forward-step text-2xl"></i></button>
+            </div>
+        </div>
     </div>
 
-    <!-- Firebase SDK -->
+    <audio id="silentAudio" loop src="data:audio/wav;base64,UklGRigAAABXQVZFlm10IBAAAAABAAEARKwAAIhAAQACABAAZGF0YQQAAAAAAA=="></audio>
+
+    <!-- Firebase -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
@@ -201,51 +252,45 @@
             onSnapshot(q, (snapshot) => {
                 libraryData = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
                 renderLibrary();
-            }, (err) => console.error("Firestore Error:", err));
+            }, (err) => console.error(err));
         }
 
         window.saveCurrentToLibrary = async () => {
             const text = document.getElementById('textContent').innerText.trim();
-            if (!text || !user) {
-                showToast("Por favor ingresa texto antes de guardar", true);
-                return;
-            }
-            const title = text.substring(0, 40).replace(/\n/g, " ") + "...";
+            if (!text || !user) return showToast("Sin texto para guardar", true);
+            
+            const title = text.substring(0, 50).replace(/\n/g, " ") + "...";
             try {
                 await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'library'), {
                     title, text, date: new Date().toISOString()
                 });
-                showToast("¡Libro guardado en la biblioteca!");
+                showToast("¡Guardado en biblioteca!");
             } catch (e) {
-                showToast("Error al guardar en la biblioteca", true);
+                showToast("Error al guardar", true);
             }
         };
 
         window.deleteFromLibrary = async (id) => {
-            try {
-                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'library', id));
-                showToast("Libro eliminado");
-            } catch (e) {
-                showToast("Error al eliminar", true);
-            }
+            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'library', id));
+            showToast("Libro eliminado");
         };
 
         function renderLibrary() {
             const list = document.getElementById('libraryList');
             if (libraryData.length === 0) {
-                list.innerHTML = `<div class="p-12 text-center text-slate-600">No hay libros guardados.</div>`;
+                list.innerHTML = `<div class="col-span-full p-12 text-center text-slate-600 italic">No hay libros guardados todavía.</div>`;
                 return;
             }
             list.innerHTML = libraryData.map(item => `
-                <div class="glass p-6 rounded-[2rem] flex justify-between items-center gap-4 animate-in fade-in slide-in-from-bottom-2">
-                    <div class="flex-1 cursor-pointer" onclick="loadToReader('${item.id}')">
-                        <h4 class="font-bold text-slate-100 text-lg">${item.title}</h4>
-                        <p class="text-[10px] text-indigo-400 font-bold mt-1 uppercase tracking-tighter">
-                            <i class="far fa-clock mr-1"></i> ${new Date(item.date).toLocaleDateString()}
+                <div class="glass p-6 rounded-[2rem] flex justify-between items-center gap-4 group hover:border-indigo-500/30 transition-all">
+                    <div class="flex-1 cursor-pointer overflow-hidden" onclick="loadToReader('${item.id}')">
+                        <h4 class="font-bold text-slate-100 text-sm sm:text-base truncate">${item.title}</h4>
+                        <p class="text-[10px] text-indigo-400 font-bold uppercase mt-1">
+                            <i class="far fa-calendar-alt mr-1"></i> ${new Date(item.date).toLocaleDateString()}
                         </p>
                     </div>
-                    <button onclick="deleteFromLibrary('${item.id}')" class="bg-red-500/10 text-red-400 w-10 h-10 rounded-full flex items-center justify-center hover:bg-red-500 hover:text-white transition-all">
-                        <i class="fas fa-trash-alt text-xs"></i>
+                    <button onclick="deleteFromLibrary('${item.id}')" class="text-slate-600 hover:text-red-400 p-2">
+                        <i class="fas fa-trash-can"></i>
                     </button>
                 </div>
             `).join('');
@@ -256,16 +301,12 @@
             document.getElementById('textContent').innerText = item.text;
             switchTab('reader');
             updateWordCount();
-            showToast("Libro cargado");
+            showToast("Cargado");
         };
 
-        // Utility: Show Toast
         window.showToast = (msg, isError = false) => {
             const toast = document.getElementById('toast');
-            const toastMsg = document.getElementById('toastMessage');
-            toastMsg.innerText = msg;
-            toast.classList.remove('bg-indigo-600', 'bg-red-600');
-            toast.classList.add(isError ? 'bg-red-600' : 'bg-indigo-600');
+            document.getElementById('toastMessage').innerText = msg;
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         };
@@ -289,19 +330,18 @@
         let lastCharIndex = 0;
         let currentPdf = null;
 
-        // --- MOTOR DE VOZ ---
         function initVoices() {
             voices = synth.getVoices();
             if (voices.length === 0) return;
 
             voiceSelect.innerHTML = '';
-            const sortedVoices = voices.sort((a, b) => {
+            const sorted = voices.sort((a, b) => {
                 if (a.name.includes('Emma')) return -1;
                 if (a.name.includes('Natural') && !b.name.includes('Natural')) return -1;
                 return 0;
             });
 
-            sortedVoices.forEach(v => {
+            sorted.forEach(v => {
                 const opt = document.createElement('option');
                 opt.value = v.name;
                 opt.textContent = v.name.replace('Microsoft ', '').replace('Online (Natural)', 'Natural ✨');
@@ -313,11 +353,11 @@
 
         function warmUpVoice() {
             synth.cancel();
-            const warmUp = new SpeechSynthesisUtterance("");
-            const selected = voices.find(v => v.name === voiceSelect.value);
-            if (selected) warmUp.voice = selected;
-            warmUp.volume = 0;
-            synth.speak(warmUp);
+            const wu = new SpeechSynthesisUtterance("");
+            const s = voices.find(v => v.name === voiceSelect.value);
+            if (s) wu.voice = s;
+            wu.volume = 0;
+            synth.speak(wu);
         }
 
         if (speechSynthesis.onvoiceschanged !== undefined) {
@@ -325,47 +365,6 @@
         }
         initVoices();
 
-        // --- EXPORTAR TEXTO ---
-        function exportTextAsFile() {
-            const text = textContent.innerText.trim();
-            if (!text) {
-                showToast("No hay texto para exportar", true);
-                return;
-            }
-            const blob = new Blob([text], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `libro_exportado_${Date.now()}.txt`;
-            a.click();
-            URL.revokeObjectURL(url);
-            showToast("Archivo .txt descargado");
-        }
-
-        // --- MANEJO DE PDF Y RANGO ---
-        async function processPdfRange() {
-            if (!currentPdf) return;
-            const start = parseInt(document.getElementById('startPage').value);
-            const end = parseInt(document.getElementById('endPage').value);
-            
-            if (start < 1 || end > currentPdf.numPages || start > end) {
-                showToast("Rango de páginas inválido", true);
-                return;
-            }
-
-            textContent.innerText = "Procesando páginas...";
-            let fullText = "";
-            for (let i = start; i <= end; i++) {
-                const page = await currentPdf.getPage(i);
-                const content = await page.getTextContent();
-                fullText += content.items.map(item => item.str).join(" ") + " ";
-            }
-            textContent.innerText = fullText.replace(/\s+/g, ' ').trim();
-            updateWordCount();
-            showToast(`Páginas ${start}-${end} cargadas`);
-        }
-
-        // --- REPRODUCCIÓN ---
         function handlePlay() {
             if (synth.speaking) {
                 if (synth.paused) {
@@ -377,49 +376,43 @@
                 }
                 return;
             }
-
-            const text = textContent.innerText.trim();
-            if (!text) return;
-            startSpeaking(text, 0);
+            const txt = textContent.innerText.trim();
+            if (txt) startSpeaking(txt, 0);
         }
 
         function startSpeaking(text, fromIndex) {
             synth.cancel();
-            silentAudio.play().catch(() => {});
+            silentAudio.play().catch(()=>{});
 
-            const remainingText = text.substring(fromIndex);
-            currentUtterance = new SpeechSynthesisUtterance(remainingText);
-            
-            const selectedVoice = voices.find(v => v.name === voiceSelect.value);
-            if (selectedVoice) currentUtterance.voice = selectedVoice;
+            const remaining = text.substring(fromIndex);
+            currentUtterance = new SpeechSynthesisUtterance(remaining);
+            const v = voices.find(vo => vo.name === voiceSelect.value);
+            if (v) currentUtterance.voice = v;
             
             currentUtterance.rate = parseFloat(speedRange.value);
             currentUtterance.volume = parseFloat(volumeRange.value);
 
             currentUtterance.onboundary = (e) => {
                 if (e.name === 'word') {
-                    const globalIndex = fromIndex + e.charIndex;
-                    lastCharIndex = globalIndex;
-                    updateSubtitles(text, globalIndex);
+                    const idx = fromIndex + e.charIndex;
+                    lastCharIndex = idx;
+                    updateSubtitles(text, idx);
                 }
             };
 
-            currentUtterance.onend = () => {
-                if (!synth.paused) stopPlayback();
-            };
-
+            currentUtterance.onend = () => { if(!synth.paused) stopPlayback(); };
+            
             subtitleBar.classList.remove('translate-y-full');
             updateUI(true);
             
             if ('mediaSession' in navigator) {
                 navigator.mediaSession.metadata = new MediaMetadata({
-                    title: 'Lector Pova',
+                    title: 'Lector AudioLibro',
                     artist: voiceSelect.value,
-                    album: 'Biblioteca'
+                    album: 'Pova Pro'
                 });
                 navigator.mediaSession.setActionHandler('play', () => { synth.resume(); updateUI(true); });
                 navigator.mediaSession.setActionHandler('pause', () => { synth.pause(); updateUI(false); });
-                navigator.mediaSession.setActionHandler('stop', stopPlayback);
             }
 
             synth.speak(currentUtterance);
@@ -433,66 +426,118 @@
             silentAudio.pause();
         }
 
-        function skipSeconds(seconds) {
-            const charStep = seconds * 15 * parseFloat(speedRange.value);
-            const newIndex = Math.max(0, lastCharIndex + charStep);
-            startSpeaking(textContent.innerText, Math.floor(newIndex));
-        }
-
         function updateUI(playing) {
-            playBtn.innerHTML = playing ? '<i class="fas fa-pause mr-2"></i> PAUSAR' : '<i class="fas fa-play mr-2"></i> REPRODUCIR';
+            playBtn.innerHTML = playing ? '<i class="fas fa-pause mr-2"></i> PAUSAR' : '<i class="fas fa-play mr-2"></i> REPRODUCIR LIBRO';
             playBtn.className = playing 
-                ? "flex-1 max-w-xs bg-amber-500 py-5 rounded-[2rem] font-bold text-lg shadow-xl reading-pulse"
-                : "flex-1 max-w-xs bg-indigo-600 py-5 rounded-[2rem] font-bold text-lg shadow-xl";
-            miniPlayBtn.innerHTML = playing ? '<i class="fas fa-pause text-xl"></i>' : '<i class="fas fa-play text-xl ml-1"></i>';
+                ? "w-full bg-amber-500 py-5 rounded-[2rem] font-bold text-base sm:text-lg shadow-xl reading-pulse flex items-center justify-center gap-4 transition-all"
+                : "w-full bg-indigo-600 py-5 rounded-[2rem] font-bold text-base sm:text-lg shadow-xl flex items-center justify-center gap-4 transition-all";
+            miniPlayBtn.innerHTML = playing ? '<i class="fas fa-pause"></i>' : '<i class="fas fa-play ml-1"></i>';
         }
 
         function updateSubtitles(fullText, index) {
-            const contextSize = 70;
-            let start = Math.max(0, index - contextSize / 2);
-            let end = Math.min(fullText.length, index + contextSize / 2);
+            const context = 70;
+            let start = Math.max(0, index - context / 2);
+            let end = Math.min(fullText.length, index + context / 2);
             while (start > 0 && fullText[start] !== ' ') start--;
             while (end < fullText.length && fullText[end] !== ' ') end++;
+            
             const phrase = fullText.substring(start, end);
-            const relIndex = index - start;
-            let wordEnd = phrase.indexOf(' ', relIndex);
+            const relIdx = index - start;
+            let wordEnd = phrase.indexOf(' ', relIdx);
             if (wordEnd === -1) wordEnd = phrase.length;
-            const b = phrase.substring(0, relIndex);
-            const w = phrase.substring(relIndex, wordEnd);
+            
+            const b = phrase.substring(0, relIdx);
+            const w = phrase.substring(relIdx, wordEnd);
             const a = phrase.substring(wordEnd);
-            subtitleText.innerHTML = `<span class="opacity-30">${b}</span> <span class="text-indigo-400 underline decoration-2 underline-offset-8">${w}</span> <span class="opacity-30">${a}</span>`;
+            
+            subtitleText.innerHTML = `<span class="opacity-30">${b}</span> <span class="text-indigo-400 underline decoration-4 underline-offset-8">${w}</span> <span class="opacity-30">${a}</span>`;
+            
+            const mainB = fullText.substring(0, index);
+            const mainW = fullText.substring(index, index + w.length);
+            const mainA = fullText.substring(index + w.length);
+            textContent.innerHTML = `${mainB}<span class="highlight-word">${mainW}</span>${mainA}`;
+            
+            const h = textContent.querySelector('.highlight-word');
+            if (h) h.scrollIntoView({ behavior: 'smooth', block: 'center' });
         }
 
-        // --- UTILIDADES ---
-        function switchTab(tab) {
-            document.getElementById('viewReader').classList.toggle('hidden', tab !== 'reader');
-            document.getElementById('viewLibrary').classList.toggle('hidden', tab !== 'library');
-            document.getElementById('tabReader').className = tab === 'reader' ? 'flex-1 py-3 font-bold text-sm active-tab transition-all' : 'flex-1 py-3 font-bold text-sm text-slate-500 transition-all';
-            document.getElementById('tabLibrary').className = tab === 'library' ? 'flex-1 py-3 font-bold text-sm active-tab transition-all' : 'flex-1 py-3 font-bold text-sm text-slate-500 transition-all';
+        function exportTextAsFile() {
+            const t = textContent.innerText.trim();
+            if (!t) return;
+            const b = new Blob([t], { type: 'text/plain' });
+            const u = URL.createObjectURL(b);
+            const a = document.createElement('a');
+            a.href = u;
+            a.download = `libro_pova_${Date.now()}.txt`;
+            a.click();
+        }
+
+        async function processPdfRange() {
+            if (!currentPdf) return;
+            const s = parseInt(document.getElementById('startPage').value);
+            const e = parseInt(document.getElementById('endPage').value);
+            if (s < 1 || e > currentPdf.numPages || s > e) return;
+            
+            textContent.innerText = "Leyendo páginas seleccionadas...";
+            let t = "";
+            for (let i = s; i <= e; i++) {
+                const p = await currentPdf.getPage(i);
+                const c = await p.getTextContent();
+                t += c.items.map(it => it.str).join(" ") + " ";
+            }
+            textContent.innerText = t.replace(/\s+/g, ' ').trim();
+            updateWordCount();
+        }
+
+        function clearContent() {
+            textContent.innerText = "";
+            updateWordCount();
+        }
+
+        function skipSeconds(sec) {
+            const step = sec * 15 * parseFloat(speedRange.value);
+            const ni = Math.max(0, lastCharIndex + step);
+            startSpeaking(textContent.innerText, Math.floor(ni));
         }
 
         function updateWordCount() {
-            const text = textContent.innerText.trim();
-            const count = text ? text.split(/\s+/).length : 0;
-            document.getElementById('wordCount').textContent = `${count} palabras`;
+            const t = textContent.innerText.trim();
+            document.getElementById('wordCount').textContent = (t ? t.split(/\s+/).length : 0) + " palabras";
+        }
+
+        function switchTab(tab) {
+            const reader = document.getElementById('viewReader');
+            const library = document.getElementById('viewLibrary');
+            const tabR = document.getElementById('tabReader');
+            const tabL = document.getElementById('tabLibrary');
+
+            if (tab === 'reader') {
+                reader.classList.remove('hidden');
+                library.classList.add('hidden');
+                tabR.className = "nav-button flex-1 py-2.5 rounded-xl font-bold text-[11px] sm:text-xs active-tab transition-all whitespace-nowrap flex items-center justify-center gap-2";
+                tabL.className = "nav-button flex-1 py-2.5 rounded-xl font-bold text-[11px] sm:text-xs text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap flex items-center justify-center gap-2";
+            } else {
+                reader.classList.add('hidden');
+                library.classList.remove('hidden');
+                tabR.className = "nav-button flex-1 py-2.5 rounded-xl font-bold text-[11px] sm:text-xs text-slate-400 hover:text-slate-200 transition-all whitespace-nowrap flex items-center justify-center gap-2";
+                tabL.className = "nav-button flex-1 py-2.5 rounded-xl font-bold text-[11px] sm:text-xs active-tab transition-all whitespace-nowrap flex items-center justify-center gap-2";
+            }
         }
 
         textContent.addEventListener('input', updateWordCount);
         speedRange.oninput = () => speedValue.textContent = speedRange.value;
 
-        // PDF y archivos
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.worker.min.js';
         document.getElementById('fileInput').addEventListener('change', async (e) => {
-            const file = e.target.files[0];
-            if (!file) return;
-            if (file.type === "application/pdf") {
-                const arrayBuffer = await file.arrayBuffer();
-                currentPdf = await pdfjsLib.getDocument(arrayBuffer).promise;
+            const f = e.target.files[0];
+            if (!f) return;
+            if (f.type === "application/pdf") {
+                const ab = await f.arrayBuffer();
+                currentPdf = await pdfjsLib.getDocument(ab).promise;
                 document.getElementById('pdfRangePanel').classList.remove('hidden');
-                document.getElementById('pdfInfoLabel').textContent = `Documento: ${currentPdf.numPages} páginas totales`;
+                document.getElementById('pdfInfoLabel').textContent = `${currentPdf.numPages} páginas totales`;
                 document.getElementById('startPage').value = 1;
                 document.getElementById('endPage').value = currentPdf.numPages;
-                document.getElementById('endPage').max = currentPdf.numPages;
                 processPdfRange();
             } else {
                 const r = new FileReader();
@@ -501,7 +546,7 @@
                     document.getElementById('pdfRangePanel').classList.add('hidden');
                     updateWordCount();
                 };
-                r.readAsText(file);
+                r.readAsText(f);
             }
         });
     </script>
